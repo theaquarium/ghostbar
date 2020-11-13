@@ -1,0 +1,18 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+# this is the best specifier i could get to say PLEASE ONLY INSTALL ON RPI
+rpi_ws281x = {version = "*", sys_platform = "== 'linux'"}
+adafruit-circuitpython-neopixel = {version = "*", sys_platform = "== 'linux'"}
+adafruit-blinka = {version = "*", sys_platform = "== 'linux'"}
+paho-mqtt = "*"
+pyyaml = "*"
+
+[dev-packages]
+pygame = "*"
+
+[requires]
+python_version = "3.8"
