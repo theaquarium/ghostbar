@@ -1,0 +1,13 @@
+[Unit]
+Description=Ghostbar Light
+After=multi-user.target
+Wants=network.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=10
+ExecStart=/home/pi/.pyenv/shims/python3 /home/pi/ghostbar/main.py
+
+[Install]
+WantedBy=multi-user.target

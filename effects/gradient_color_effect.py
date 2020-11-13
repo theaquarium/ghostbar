@@ -10,7 +10,7 @@ from colorable_effect_base import ColorableEffectBase
 
 class GradientColorEffect(ColorableEffectBase):
     '''
-    Ink effect
+    Gradient color effect
     '''
 
     RANDOM_SIZE = 2

@@ -5,9 +5,10 @@ import json
 import time
 
 import paho.mqtt.client as mqtt
+import os
 import yaml
 
-from simulator_output import SimulatorOutput
+from neopixel_output import *
 
 from colorable_effect_base import ColorableEffectBase
 
@@ -20,8 +21,9 @@ from effects.rainbow_gradient_effect import RainbowGradientEffect
 from effects.horizontal_rainbow_gradient_effect import HorizontalRainbowGradientEffect
 
 # Load configuration
-
-with open(r'config.yaml') as file:
+__location__ = os.path.realpath(
+    os.path.join(os.getcwd(), os.path.dirname(__file__)))
+with open(os.path.join(__location__, 'config.yaml')) as file:
     config = yaml.load(file, Loader=yaml.FullLoader)
 
 ROWS = config['rows']
@@ -45,19 +47,19 @@ state = {
 }
 
 # Light stuff
-output = SimulatorOutput(rows = ROWS, cols = COLS)
+output = NeopixelOutput(pixel_info=PixelInfo(pin='D18', order='GRB', brightness=1), rows = ROWS, cols = COLS, max_amps=15)
 
 effects = {
     'solid': SolidColorEffect(ROWS, COLS, color=(255, 0, 255)),
     'pulse': PulseColorEffect(ROWS, COLS, speed=0.005, points=[
         (0.0, 0.0), (0.42, 0.0), (0.58, 1.0), (1.0, 1.0)
     ], color=(255, 0, 255)),
-    'ink': InkEffect(ROWS, COLS, speed=0.1),
-    'gradient_color': GradientColorEffect(ROWS, COLS, color=(255, 0, 255), speed=0.1, angle=45, width=15),
+    'ink': InkEffect(ROWS, COLS, speed=0.5),
+    'gradient_color': GradientColorEffect(ROWS, COLS, color=(255, 0, 255), speed=0.3, angle=45, width=15),
     'rainbow_gradient': RainbowGradientEffect(ROWS, COLS, colors=[
         (228, 3, 3),(255, 140, 0), (255, 237, 0), (0, 219, 66), (0, 77, 255), (209, 0, 181),
-    ], speed=0.1, angle=45, width=15),
-    'horizontal_gradient_color': HorizontalGradientColorEffect(ROWS, COLS, color=(255, 0, 255), speed=0.1, width=3),
+    ], speed=0.3, angle=45, width=15),
+    'horizontal_gradient_color': HorizontalGradientColorEffect(ROWS, COLS, color=(255, 0, 255), speed=0.3, width=3),
     'horizontal_rainbow_gradient': HorizontalRainbowGradientEffect(ROWS, COLS, colors=[
         (228, 3, 3),(255, 140, 0), (255, 237, 0), (0, 219, 66), (0, 77, 255), (209, 0, 181),
     ], speed=-0.1, width=3),
@@ -65,6 +67,7 @@ effects = {
 off_effect = SolidColorEffect(ROWS, COLS, color=(0, 0, 0))
 
 queued_updates = {}
+transition_effects = {}
 
 # MQTT stuff
 def on_connect(client, userdata, flags, rc):
@@ -95,16 +98,34 @@ def on_message(client, userdata, msg):
             print('invalid json received')
             return
         else:
+            global transition_effects
+            do_transition = False
+            transition_effects = {}
+            if 'transition' in message_json:
+                do_transition = True
+                transition_effects['old_color'] = state['color']
+                transition_effects['old_brightness'] = state['brightness']
+                transition_effects['duration'] = message_json['transition']
+                transition_effects['start_time'] = time.time()
             if 'state' in message_json:
                 new_state = message_json['state']
                 if new_state == 'ON':
                     queued_updates['state'] = True
+                    if do_transition and state['state'] != True:
+                        transition_effects['old_brightness'] = 0
+                        transition_effects['new_brightness'] = state['brightness']
+                        transition_effects['new_state'] = True
                 else:
                     queued_updates['state'] = False
+                    if do_transition and state['state'] != False:
+                        transition_effects['old_brightness'] = state['brightness']
+                        transition_effects['new_brightness'] = 0
+                        transition_effects['new_state'] = False
             if 'brightness' in message_json:
                 new_brightness = message_json['brightness']
                 queued_updates['brightness'] = new_brightness / 255.0
-                print(new_brightness, queued_updates['brightness'])
+                if do_transition:
+                    transition_effects['new_brightness'] = queued_updates['brightness']
             if 'effect' in message_json:
                 new_effect = message_json['effect']
                 queued_updates['effect'] = new_effect
@@ -114,6 +135,12 @@ def on_message(client, userdata, msg):
                     queued_updates['color'] = (
                         new_color['r'], new_color['g'], new_color['b'],
                     )
+                    if do_transition:
+                        transition_effects['new_color'] = queued_updates['color']
+                        # if light is turning on with a color and state transition
+                        # use new color as old color too so it doesn't fade from whatever was before
+                        if 'state' in message_json:
+                            transition_effects['old_color'] = queued_updates['color']
 
 client = mqtt.Client(client_id=CLIENT_ID)
 client.on_connect = on_connect
@@ -159,18 +186,57 @@ while successful_draw:
     except KeyError:
         effect = effects['solid']
 
+    transition_color = state['color']
+    transition_brightness = state['brightness']
+    transition_state = state['state']
+    if len(transition_effects.keys()) > 0:
+        transition_ratio = (time.time() - transition_effects['start_time']) / transition_effects['duration']
+        if 'new_brightness' in transition_effects:
+            old_brightness = transition_effects['old_brightness']
+            new_brightness = transition_effects['new_brightness']
+            brightness_diff = new_brightness - old_brightness
+            if transition_ratio > 1.0:
+                transition_brightness = new_brightness
+            else:
+                transition_brightness = old_brightness + brightness_diff * transition_ratio
+        if 'new_color' in transition_effects:
+            old_col = transition_effects['old_color']
+            new_col = transition_effects['new_color']
+            r_diff = new_col[0] - old_col[0]
+            g_diff = new_col[1] - old_col[1]
+            b_diff = new_col[2] - old_col[2]
+            if transition_ratio > 1.0:
+                transition_color = new_col
+            else:
+                transition_color = (
+                    old_col[0] + r_diff * transition_ratio,
+                    old_col[1] + g_diff * transition_ratio,
+                    old_col[2] + b_diff * transition_ratio,
+                )
+        if 'new_state' in transition_effects:
+            transition_state = True
+        if transition_ratio > 1:
+            transition_effects = {}
+
     if isinstance(effect, ColorableEffectBase):
-        effect.change_color(state['color'])
+        effect.change_color(transition_color)
 
-    # if light is on
-    if state['state']:
-        effect.evolve()
-        data = effect.get_data(brightness=state['brightness'])
-    else:
-        data = off_effect.get_data()
+    # # if light is on
+    # if state['state']:
+    #     effect.evolve()
+    #     data = effect.get_data(brightness=state['brightness'])
+    # else:
+    #     data = off_effect.get_data()
 
+    # successful_draw = output.write(data)
     try:
-        successful_draw = output.write(data) # pylint: disable=invalid-name
+        # if light is on
+        if transition_state:
+            effect.evolve()
+            successful_draw = output.write(effect, brightness=transition_brightness) # pylint: disable=invalid-name
+        else:
+            successful_draw = output.write(off_effect, brightness=transition_brightness) # pylint: disable=invalid-name
+        # successful_draw = output.write(data) # pylint: disable=invalid-name
     except Exception as e:
         print(e)
         successful_draw = False # pylint: disable=invalid-name
