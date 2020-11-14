@@ -56,12 +56,12 @@ class NeopixelOutput(OutputBase): # pylint: disable=too-few-public-methods
                 pixel_num = y_coord * self.cols
                 # If this row runs in reverse, reverse the order
                 if reverse:
-                    pixel_num += x_coord
-                else:
                     pixel_num += (self.cols - 1) - x_coord
+                else:
+                    pixel_num += x_coord
 
                 # self.pixels[pixel_num] = data[y_coord][x_coord]
-                col = tuple([brightness * x for x in effect.get_pixel(x_coord, y_coord)])
+                col = tuple([brightness * x for x in effect.get_pixel(x_coord, (self.rows - 1) - y_coord)])
                 self.pixels[pixel_num] = col
                 # for brightness in data[y_coord][x_coord]:
                 #     total_amps += (brightness / 255) * 0.02 # 0.02A is per-color power draw
