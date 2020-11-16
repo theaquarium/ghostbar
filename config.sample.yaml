@@ -1,3 +1,4 @@
+delay: 0.04
 rows: 6
 columns: 50
 mqtt_client_id: 'name'

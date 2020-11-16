@@ -8,7 +8,8 @@ import paho.mqtt.client as mqtt
 import os
 import yaml
 
-from neopixel_output import *
+# from neopixel_output import *
+from simulator_output import SimulatorOutput
 
 from colorable_effect_base import ColorableEffectBase
 
@@ -19,6 +20,8 @@ from effects.gradient_color_effect import GradientColorEffect
 from effects.horizontal_gradient_color_effect import HorizontalGradientColorEffect
 from effects.rainbow_gradient_effect import RainbowGradientEffect
 from effects.horizontal_rainbow_gradient_effect import HorizontalRainbowGradientEffect
+from effects.rain_effect import RainEffect
+from effects.fireworks_effect import FireworksEffect
 
 # Load configuration
 __location__ = os.path.realpath(
@@ -26,6 +29,7 @@ __location__ = os.path.realpath(
 with open(os.path.join(__location__, 'config.yaml')) as file:
     config = yaml.load(file, Loader=yaml.FullLoader)
 
+DELAY = config['delay']
 ROWS = config['rows']
 COLS = config['columns']
 CLIENT_ID = config['mqtt_client_id']
@@ -47,7 +51,8 @@ state = {
 }
 
 # Light stuff
-output = NeopixelOutput(pixel_info=PixelInfo(pin='D18', order='GRB', brightness=1), rows = ROWS, cols = COLS, max_amps=15)
+output = SimulatorOutput(rows=ROWS, cols=COLS)
+# output = NeopixelOutput(pixel_info=PixelInfo(pin='D18', order='GRB', brightness=1), rows = ROWS, cols = COLS, max_amps=15)
 
 effects = {
     'solid': SolidColorEffect(ROWS, COLS, color=(255, 0, 255)),
@@ -63,6 +68,8 @@ effects = {
     'horizontal_rainbow_gradient': HorizontalRainbowGradientEffect(ROWS, COLS, colors=[
         (228, 3, 3),(255, 140, 0), (255, 237, 0), (0, 219, 66), (0, 77, 255), (209, 0, 181),
     ], speed=-0.1, width=3),
+    'rain': RainEffect(ROWS, COLS, color=(255, 0, 255), particle_color=(255, 255, 255), speed=0.1, density=30),
+    'fireworks': FireworksEffect(ROWS, COLS, speed=0.1, density=5),
 }
 off_effect = SolidColorEffect(ROWS, COLS, color=(0, 0, 0))
 
@@ -139,7 +146,7 @@ def on_message(client, userdata, msg):
                         transition_effects['new_color'] = queued_updates['color']
                         # if light is turning on with a color and state transition
                         # use new color as old color too so it doesn't fade from whatever was before
-                        if 'state' in message_json:
+                        if 'new_state' in transition_effects:
                             transition_effects['old_color'] = queued_updates['color']
 
 client = mqtt.Client(client_id=CLIENT_ID)
@@ -228,7 +235,8 @@ while successful_draw:
     # else:
     #     data = off_effect.get_data()
 
-    # successful_draw = output.write(data)
+    # effect.evolve()
+    # successful_draw = output.write(effect, brightness=transition_brightness)
     try:
         # if light is on
         if transition_state:
@@ -241,7 +249,7 @@ while successful_draw:
         print(e)
         successful_draw = False # pylint: disable=invalid-name
 
-    time.sleep(0.01)
+    time.sleep(DELAY)
 
 client.publish(AVAILABLITY_TOPIC, 'offline', qos=1, retain=False)
 client.loop_stop()
