@@ -22,6 +22,8 @@ from effects.rainbow_gradient_effect import RainbowGradientEffect
 from effects.horizontal_rainbow_gradient_effect import HorizontalRainbowGradientEffect
 from effects.rain_effect import RainEffect
 from effects.fireworks_effect import FireworksEffect
+from effects.stars_effect import StarsEffect
+from effects.pride_progress_effect import PrideProgressEffect
 
 # Load configuration
 __location__ = os.path.realpath(
@@ -42,13 +44,15 @@ STATE_TOPIC = config['mqtt_state_topic']
 AVAILABLITY_TOPIC = config['mqtt_availability_topic']
 
 # Build state object
-
-state = {
-    'state': False,
-    'brightness': 1,
-    'effect': 'solid',
-    'color': (255, 255, 255),
-}
+state = {}
+state['state'] = config['default_state']['state']
+state['brightness'] = config['default_state']['brightness']
+state['effect'] = config['default_state']['effect']
+state['color'] = (
+    config['default_state']['color'][0],
+    config['default_state']['color'][1],
+    config['default_state']['color'][2],
+)
 
 # Light stuff
 output = SimulatorOutput(rows=ROWS, cols=COLS)
@@ -70,6 +74,14 @@ effects = {
     ], speed=-0.1, width=3),
     'rain': RainEffect(ROWS, COLS, color=(255, 0, 255), particle_color=(255, 255, 255), speed=0.1, density=30),
     'fireworks': FireworksEffect(ROWS, COLS, speed=0.1, density=5),
+    'stars': StarsEffect(ROWS, COLS, color=(255, 0, 255), particle_color=(255, 255, 255), points=[
+        (0.0, 0.0), (0.42, 0.0), (0.58, 1.0), (1.0, 1.0)
+    ], speed=0.015, density=10),
+    'pride_progress': PrideProgressEffect(ROWS, COLS, background_colors=[
+        (228, 3, 3),(255, 140, 0), (255, 237, 0), (0, 219, 66), (0, 77, 255), (209, 0, 181),
+    ], chevron_colors=[
+        (255, 255, 255), (255, 175, 200), (116, 215, 236), (96, 56, 20), (0, 0, 0),
+    ], speed=0.3, angle=45, width=15),
 }
 off_effect = SolidColorEffect(ROWS, COLS, color=(0, 0, 0))
 
@@ -81,7 +93,7 @@ def on_connect(client, userdata, flags, rc):
     print("Connected with result code " + str(rc))
 
     client.subscribe(COMMAND_TOPIC)
-    client.publish(AVAILABLITY_TOPIC, 'online', qos=1, retain=False)
+    client.publish(AVAILABLITY_TOPIC, 'online', qos=1, retain=True)
     state_update = {
         'state': 'ON' if state['state'] else 'OFF',
         'brightness': state['brightness'] * 255,
@@ -118,13 +130,13 @@ def on_message(client, userdata, msg):
                 new_state = message_json['state']
                 if new_state == 'ON':
                     queued_updates['state'] = True
-                    if do_transition and state['state'] != True:
+                    if do_transition and not state['state']:
                         transition_effects['old_brightness'] = 0
                         transition_effects['new_brightness'] = state['brightness']
                         transition_effects['new_state'] = True
                 else:
                     queued_updates['state'] = False
-                    if do_transition and state['state'] != False:
+                    if do_transition and state['state']:
                         transition_effects['old_brightness'] = state['brightness']
                         transition_effects['new_brightness'] = 0
                         transition_effects['new_state'] = False
@@ -149,20 +161,24 @@ def on_message(client, userdata, msg):
                         if 'new_state' in transition_effects:
                             transition_effects['old_color'] = queued_updates['color']
 
-client = mqtt.Client(client_id=CLIENT_ID)
-client.on_connect = on_connect
-client.on_message = on_message
+if config['use_mqtt']:
+    client = mqtt.Client(client_id=CLIENT_ID)
+    client.on_connect = on_connect
+    client.on_message = on_message
 
-client.tls_set()
-client.username_pw_set(USER, password=PASS)
-client.connect(IP, PORT, 60)
+    client.tls_set()
+    client.username_pw_set(USER, password=PASS)
+    client.connect(IP, PORT, 60)
 
-# Start async MQTT loop
-client.loop_start()
+    # Start async MQTT loop
+    client.loop_start()
 
 # stupid stupid linter if someone wants to explain why this needs to be all caps go ahead
 successful_draw = True # pylint: disable=invalid-name
 while successful_draw:
+
+    if config['use_mqtt'] and int(time.time()) % 30 == 0:
+        client.publish(AVAILABLITY_TOPIC, 'online', qos=1, retain=True)
 
     if 'state' in queued_updates:
         state['state'] = queued_updates['state']
@@ -185,7 +201,8 @@ while successful_draw:
             },
         }
 
-        client.publish(STATE_TOPIC, json.dumps(state_update), qos=1, retain=False)
+        if config['use_mqtt']:
+            client.publish(STATE_TOPIC, json.dumps(state_update), qos=1, retain=False)
         queued_updates = {}
 
     try:
@@ -237,19 +254,28 @@ while successful_draw:
 
     # effect.evolve()
     # successful_draw = output.write(effect, brightness=transition_brightness)
-    try:
-        # if light is on
+    
+    if config['catch_errors']:
+        try:
+            # if light is on
+            if transition_state:
+                effect.evolve()
+                successful_draw = output.write(effect, brightness=transition_brightness) # pylint: disable=invalid-name
+            else:
+                successful_draw = output.write(off_effect, brightness=transition_brightness) # pylint: disable=invalid-name
+            # successful_draw = output.write(data) # pylint: disable=invalid-name
+        except Exception as e:
+            print(e)
+            successful_draw = False # pylint: disable=invalid-name
+    else:
         if transition_state:
             effect.evolve()
             successful_draw = output.write(effect, brightness=transition_brightness) # pylint: disable=invalid-name
         else:
             successful_draw = output.write(off_effect, brightness=transition_brightness) # pylint: disable=invalid-name
-        # successful_draw = output.write(data) # pylint: disable=invalid-name
-    except Exception as e:
-        print(e)
-        successful_draw = False # pylint: disable=invalid-name
 
     time.sleep(DELAY)
 
-client.publish(AVAILABLITY_TOPIC, 'offline', qos=1, retain=False)
-client.loop_stop()
+if config['use_mqtt']:
+    client.publish(AVAILABLITY_TOPIC, 'offline', qos=1, retain=False)
+    client.loop_stop()

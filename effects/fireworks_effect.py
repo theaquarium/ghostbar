@@ -1,5 +1,5 @@
 '''
-Stars effect
+Fireworks effect
 '''
 
 import colorsys
@@ -10,7 +10,7 @@ from effect_base import EffectBase
 
 class FireworksEffect(EffectBase):
     '''
-    Stars effect
+    Fireworks effect
     '''
 
     class Star:

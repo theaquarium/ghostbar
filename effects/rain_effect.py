@@ -51,11 +51,17 @@ class RainEffect(ColorableEffectBase):
             particle_y = new_particle[1]
             particle_y_floor = math.floor(particle_y)
             particle_amount_in_floor = particle_y - particle_y_floor
-            blended_color_floor = blend_colors(self.color, self.particle_color, 1 - particle_amount_in_floor)
-            blended_color_ceiling = blend_colors(self.color, self.particle_color, particle_amount_in_floor)
             if particle_y_floor >= 0 and particle_y_floor < self.rows:
+                blended_color_floor = blend_colors(
+                    new_data[particle_y_floor][new_particle[0]],
+                    self.particle_color, 1 - particle_amount_in_floor
+                )
                 new_data[particle_y_floor][new_particle[0]] = blended_color_floor
             if particle_y_floor + 1 >= 0 and particle_y_floor + 1 < self.rows:
+                blended_color_ceiling = blend_colors(
+                    new_data[particle_y_floor + 1][new_particle[0]],
+                    self.particle_color, particle_amount_in_floor
+                )
                 new_data[particle_y_floor + 1][new_particle[0]] = blended_color_ceiling
 
         # print(new_data)

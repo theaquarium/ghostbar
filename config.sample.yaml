@@ -9,3 +9,16 @@ mqtt_broker_port: 8883
 mqtt_command_topic: 'some/topic'
 mqtt_state_topic: 'some/topic'
 mqtt_availability_topic: 'some/topic'
+
+default_state:
+  state: True
+  brightness: 1
+  effect: solid
+  color: 
+    - 255
+    - 255
+    - 255
+
+# dev options
+use_mqtt: true
+catch_errors: false

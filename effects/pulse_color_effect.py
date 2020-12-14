@@ -32,7 +32,7 @@ class PulseColorEffect(ColorableEffectBase):
         self.bezier = term1[1] + term2[1] + term3[1] + term4[1]
 
     def get_pixel(self, x_coord, y_coord):
-        return (round(self.color[0] * self.bezier), round(self.color[1] * self.bezier), round(self.color[2] * self.bezier))
+        return (self.color[0] * self.bezier, self.color[1] * self.bezier, self.color[2] * self.bezier)
 
 def scalar_multiplier(vector, scalar):
     '''
