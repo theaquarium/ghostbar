@@ -8,8 +8,8 @@ import paho.mqtt.client as mqtt
 import os
 import yaml
 
-# from neopixel_output import *
-from simulator_output import SimulatorOutput
+from neopixel_output import *
+# from simulator_output import SimulatorOutput
 
 from colorable_effect_base import ColorableEffectBase
 
@@ -23,7 +23,7 @@ from effects.horizontal_rainbow_gradient_effect import HorizontalRainbowGradient
 from effects.rain_effect import RainEffect
 from effects.fireworks_effect import FireworksEffect
 from effects.stars_effect import StarsEffect
-from effects.pride_progress_effect import PrideProgressEffect
+# from effects.pride_progress_effect import PrideProgressEffect
 
 # Load configuration
 __location__ = os.path.realpath(
@@ -55,8 +55,8 @@ state['color'] = (
 )
 
 # Light stuff
-output = SimulatorOutput(rows=ROWS, cols=COLS)
-# output = NeopixelOutput(pixel_info=PixelInfo(pin='D18', order='GRB', brightness=1), rows = ROWS, cols = COLS, max_amps=15)
+# output = SimulatorOutput(rows=ROWS, cols=COLS)
+output = NeopixelOutput(pixel_info=PixelInfo(pin='D18', order='GRB', brightness=1), rows = ROWS, cols = COLS, max_amps=15)
 
 effects = {
     'solid': SolidColorEffect(ROWS, COLS, color=(255, 0, 255)),
@@ -77,11 +77,11 @@ effects = {
     'stars': StarsEffect(ROWS, COLS, color=(255, 0, 255), particle_color=(255, 255, 255), points=[
         (0.0, 0.0), (0.42, 0.0), (0.58, 1.0), (1.0, 1.0)
     ], speed=0.015, density=10),
-    'pride_progress': PrideProgressEffect(ROWS, COLS, background_colors=[
-        (228, 3, 3),(255, 140, 0), (255, 237, 0), (0, 219, 66), (0, 77, 255), (209, 0, 181),
-    ], chevron_colors=[
-        (255, 255, 255), (255, 175, 200), (116, 215, 236), (96, 56, 20), (0, 0, 0),
-    ], speed=0.3, angle=45, width=15),
+    # 'pride_progress': PrideProgressEffect(ROWS, COLS, background_colors=[
+    #     (228, 3, 3),(255, 140, 0), (255, 237, 0), (0, 219, 66), (0, 77, 255), (209, 0, 181),
+    # ], chevron_colors=[
+    #     (255, 255, 255), (255, 175, 200), (116, 215, 236), (96, 56, 20), (0, 0, 0),
+    # ], speed=0.3, angle=45, width=15),
 }
 off_effect = SolidColorEffect(ROWS, COLS, color=(0, 0, 0))
 
@@ -106,10 +106,11 @@ def on_connect(client, userdata, flags, rc):
     }
 
     client.publish(STATE_TOPIC, json.dumps(state_update), qos=1, retain=False)
+    print('Startup done')
 
 def on_message(client, userdata, msg):
+    print('received message on', msg.topic)
     message_text = str(msg.payload.decode("utf-8"))
-    print('received message on', msg.topic, message_text)
     if msg.topic == COMMAND_TOPIC:
         try:
             message_json = json.loads(message_text)
@@ -161,7 +162,9 @@ def on_message(client, userdata, msg):
                         if 'new_state' in transition_effects:
                             transition_effects['old_color'] = queued_updates['color']
 
-if config['use_mqtt']:
+if config['use_mqtt']
+    print('Starting in MQTT mode')
+
     client = mqtt.Client(client_id=CLIENT_ID)
     client.on_connect = on_connect
     client.on_message = on_message
