@@ -162,7 +162,7 @@ def on_message(client, userdata, msg):
                         if 'new_state' in transition_effects:
                             transition_effects['old_color'] = queued_updates['color']
 
-if config['use_mqtt']
+if config['use_mqtt']:
     print('Starting in MQTT mode')
 
     client = mqtt.Client(client_id=CLIENT_ID)
