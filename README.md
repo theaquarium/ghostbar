@@ -1,10 +1,6 @@
 # Ghostbar
 A Python script to control a Neopixel matrix with Home Assistant.
 
-## Usage
-I use pipenv, and just run `pipenv install` to install this on your computer.
-Install this on a Raspberry Pi to use it with Neopixels.
-
 ## License
 
     Copyright (C) 2020 Peter Vashevko

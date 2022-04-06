@@ -20,15 +20,15 @@ class EffectBase:
         Get color at specific pixel
         '''
 
-    def get_data(self, brightness=1):
-        '''
-        Get full 2D array
-        '''
-        data = []
-        for y_coord in range (0, self.rows):
-            data.append([])
-            for x_coord in range (0, self.cols):
-                col = tuple([brightness * x for x in self.get_pixel(x_coord, y_coord)])
-                data[y_coord].append(col)
+    # def get_data(self, brightness=1):
+    #     '''
+    #     Get full 2D array
+    #     '''
+    #     data = []
+    #     for y_coord in range (0, self.rows):
+    #         data.append([])
+    #         for x_coord in range (0, self.cols):
+    #             col = tuple([brightness * x for x in self.get_pixel(x_coord, y_coord)])
+    #             data[y_coord].append(col)
 
-        return data
+    #     return data

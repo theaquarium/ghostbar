@@ -23,7 +23,7 @@ class SimulatorOutput(OutputBase): # pylint: disable=too-few-public-methods
         ))
         pygame.display.set_caption('Neopixel Simulator')
 
-    def write(self, data):
+    def write(self, effect, brightness=1):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -31,7 +31,8 @@ class SimulatorOutput(OutputBase): # pylint: disable=too-few-public-methods
 
         for x_coord in range (0, self.cols):
             for y_coord in range (0, self.rows):
-                pygame.draw.rect(self.window, data[y_coord][x_coord],
+                col = tuple([brightness * x for x in effect.get_pixel(x_coord, y_coord)])
+                pygame.draw.rect(self.window, col,
                     [
                         self.BUFFER + (x_coord * self.PIXEL_SIZE),
                         self.BUFFER + (y_coord * self.PIXEL_SIZE),

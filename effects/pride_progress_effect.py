@@ -1,27 +1,40 @@
 '''
-Gradient color effect
+Pride progress flag effect
 '''
 
 import colorsys
 import math
 import random
+from effect_base import EffectBase
 
-from colorable_effect_base import ColorableEffectBase
-
-class GradientColorEffect(ColorableEffectBase):
+class Chevron:
     '''
-    Gradient color effect
+    Chevron stop
+    '''
+    def __init__(self, start, stop, color):
+        self.start = start
+        self.stop = stop
+        self.color = color
+
+class PrideProgressEffect(EffectBase):
+    '''
+    Pride progress flag effect
     '''
 
     RANDOM_SIZE = 2
 
-    def __init__(self, rows, cols, color=(255, 255, 255), speed=0.1, angle=45, width=15):
+    def __init__(self, rows, cols, background_colors=[(255, 255, 255)], speed=0.1, angle=45, spacing=15,
+        chevron_width=2, chevron_colors=[(255, 255, 255)]):
         super().__init__(rows, cols)
 
         self.speed = speed
-        self.color = color
+        self.background_colors = background_colors
+        self.chevron_colors = chevron_colors
         self.angle = math.radians(angle)
-        self.width = width
+        self.spacing = spacing
+        self.chevron_width = chevron_width
+
+        self.rainbow_counter = 0
 
         if angle < 0:
             self.angle_reversed = True
@@ -32,6 +45,7 @@ class GradientColorEffect(ColorableEffectBase):
             self.speed_reversed = True
         else:
             self.speed_reversed = False
+            self.chevron_colors.reverse()
 
         self.stops = []
 
@@ -74,25 +88,25 @@ class GradientColorEffect(ColorableEffectBase):
         if len(self.stops) == 0:
             if self.speed_reversed:
                 if self.angle_reversed:
-                    self.stops.append({ 'pos': 0, 'col': related_color(self.color) })
+                    self.stops.append({ 'pos': 0, 'col': self._get_rainbow_col() })
                 else:
                     max_y = math.tan(self.angle) * self.rows
-                    self.stops.append({ 'pos': -max_y, 'col': related_color(self.color) })
+                    self.stops.append({ 'pos': -max_y, 'col': self._get_rainbow_col() })
             else:
                 if self.angle_reversed:
                     max_y = math.tan(self.angle) * self.rows
-                    self.stops.insert(0, { 'pos': self.cols - max_y, 'col': related_color(self.color) })
+                    self.stops.insert(0, { 'pos': self.cols - max_y, 'col': self._get_rainbow_col() })
                 else:
-                    self.stops.insert(0, { 'pos': self.cols, 'col': related_color(self.color) })
+                    self.stops.insert(0, { 'pos': self.cols, 'col': self._get_rainbow_col() })
 
         if self.speed_reversed:
             while stop_loc >= self.stops[-1]['pos']:
-                stop_offset = self.width + ((random.random() * self.RANDOM_SIZE) - (self.RANDOM_SIZE / 2))
-                self.stops.append({ 'pos': self.stops[-1]['pos'] + stop_offset, 'col': related_color(self.color) })
+                stop_offset = self.spacing + ((random.random() * self.RANDOM_SIZE) - (self.RANDOM_SIZE / 2))
+                self.stops.append({ 'pos': self.stops[-1]['pos'] + stop_offset, 'col': self._get_rainbow_col() })
         else:
             while stop_loc <= self.stops[0]['pos']:
-                stop_offset = self.width + ((random.random() * self.RANDOM_SIZE) - (self.RANDOM_SIZE / 2))
-                self.stops.insert(0, { 'pos': self.stops[0]['pos'] - stop_offset, 'col': related_color(self.color) })
+                stop_offset = self.spacing + ((random.random() * self.RANDOM_SIZE) - (self.RANDOM_SIZE / 2))
+                self.stops.insert(0, { 'pos': self.stops[0]['pos'] - stop_offset, 'col': self._get_rainbow_col() })
 
         stop1 = {}
         stop2 = {}
@@ -134,22 +148,7 @@ class GradientColorEffect(ColorableEffectBase):
                 stop1['col'][2] + b_diff * stop_ratio
         )
 
-
-def clamp(num, minn, maxn):
-    '''
-    Clamp int to range
-    '''
-    return max(min(maxn, num), minn)
-
-def related_color(color):
-    '''
-    Get a similar color
-    '''
-    color_scaled = tuple([x / 255 for x in color])
-    hsv_col = colorsys.rgb_to_hsv(*color_scaled)
-    # add plusminus 20 to hue
-    new_hue = (hsv_col[0] + ((random.randint(0, 40) - 20) / 255.0)) % 1.0
-    new_sat = clamp(hsv_col[1] * 255 + (random.randint(0, 40) - 20), 0, 255) / 255
-    new_val = clamp(hsv_col[2] * 255 + (random.randint(0, 40) - 20), 0, 255) / 255
-    new_color = colorsys.hsv_to_rgb(new_hue, new_sat, new_val)
-    return tuple([255 * x for x in new_color])
+    def _get_rainbow_col(self):
+        col = self.background_colors[self.rainbow_counter]
+        self.rainbow_counter = (self.rainbow_counter + 1) % len(self.background_colors)
+        return col
