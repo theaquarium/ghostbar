@@ -39,9 +39,12 @@ USER = config['mqtt_username']
 PASS = config['mqtt_password']
 IP = config['mqtt_broker_address']
 PORT = config['mqtt_broker_port']
+CONFIG_TOPIC = config['mqtt_config_topic']
 COMMAND_TOPIC = config['mqtt_command_topic']
 STATE_TOPIC = config['mqtt_state_topic']
 AVAILABLITY_TOPIC = config['mqtt_availability_topic']
+UNIQUE_ID = config['unique_id']
+DEVICE_NAME = config['device_name']
 
 # Build state object
 state = {}
@@ -92,12 +95,59 @@ transition_effects = {}
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code " + str(rc))
 
+    discovery_config = {
+        'enabled_by_default': True,
+        'schema': 'json',
+        'brightness_scale': 255,
+        'command_topic': COMMAND_TOPIC,
+        'state_topic': STATE_TOPIC,
+        'availability': [
+            {
+                'topic': AVAILABLITY_TOPIC,
+                'payload_available': 'online',
+                'payload_not_available': 'offline'
+            }
+        ],
+        'effect': True,
+        'effect_list': [
+            'solid',
+            'pulse',
+            'ink',
+            'gradient_color',
+            'horizontal_gradient_color',
+            'rainbow_gradient',
+            'horizontal_rainbow_gradient',
+            'rain',
+            'fireworks',
+            'stars'
+        ],
+        'name': DEVICE_NAME,
+        'qos': 1,
+        'unique_id': UNIQUE_ID,
+        'brightness': True,
+        'color_mode': True,
+        'supported_color_modes': [
+            'onoff',
+            'brightness',
+            'rgb'
+        ],
+        'device': {
+            'name': DEVICE_NAME,
+            'manufacturer': 'Leah Vashevko',
+            'identifiers': [
+                UNIQUE_ID
+            ]
+        }
+    }
+    client.publish(CONFIG_TOPIC, json.dumps(discovery_config), qos=1, retain=True)
+
     client.subscribe(COMMAND_TOPIC)
     client.publish(AVAILABLITY_TOPIC, 'online', qos=1, retain=True)
     state_update = {
         'state': 'ON' if state['state'] else 'OFF',
         'brightness': state['brightness'] * 255,
         'effect': state['effect'],
+        'color_mode': 'rgb',
         'color': {
             'r': state['color'][0],
             'g': state['color'][1],
@@ -105,7 +155,8 @@ def on_connect(client, userdata, flags, rc):
         },
     }
 
-    client.publish(STATE_TOPIC, json.dumps(state_update), qos=1, retain=False)
+    client.publish(STATE_TOPIC, json.dumps(state_update), qos=1, retain=True)
+
     print('Startup done')
 
 def on_message(client, userdata, msg):
@@ -180,8 +231,8 @@ if config['use_mqtt']:
 successful_draw = True # pylint: disable=invalid-name
 while successful_draw:
 
-    if config['use_mqtt'] and int(time.time()) % 30 == 0:
-        client.publish(AVAILABLITY_TOPIC, 'online', qos=1, retain=True)
+    # if config['use_mqtt'] and int(time.time()) % 30 == 0:
+    #     client.publish(AVAILABLITY_TOPIC, 'online', qos=1, retain=True)
 
     if 'state' in queued_updates:
         state['state'] = queued_updates['state']
@@ -197,6 +248,7 @@ while successful_draw:
             'state': 'ON' if state['state'] else 'OFF',
             'brightness': state['brightness'] * 255,
             'effect': state['effect'],
+            'color_mode': 'rgb',
             'color': {
                 'r': state['color'][0],
                 'g': state['color'][1],
@@ -205,7 +257,7 @@ while successful_draw:
         }
 
         if config['use_mqtt']:
-            client.publish(STATE_TOPIC, json.dumps(state_update), qos=1, retain=False)
+            client.publish(STATE_TOPIC, json.dumps(state_update), qos=1, retain=True)
         queued_updates = {}
 
     try:
@@ -280,5 +332,5 @@ while successful_draw:
     time.sleep(DELAY)
 
 if config['use_mqtt']:
-    client.publish(AVAILABLITY_TOPIC, 'offline', qos=1, retain=False)
+    client.publish(AVAILABLITY_TOPIC, 'offline', qos=1, retain=True)
     client.loop_stop()

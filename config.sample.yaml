@@ -6,9 +6,12 @@ mqtt_username: 'user'
 mqtt_password: 'pass'
 mqtt_broker_address: 'ip'
 mqtt_broker_port: 8883
+mqtt_config_topic: 'homeassistant/light/ghostbar/config'
 mqtt_command_topic: 'some/topic'
 mqtt_state_topic: 'some/topic'
 mqtt_availability_topic: 'some/topic'
+unique_id: 'ghostbar'
+device_name: 'Ghostbar'
 
 default_state:
   state: True
