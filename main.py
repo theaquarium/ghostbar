@@ -127,8 +127,6 @@ def on_connect(client, userdata, flags, rc):
         'brightness': True,
         'color_mode': True,
         'supported_color_modes': [
-            'onoff',
-            'brightness',
             'rgb'
         ],
         'device': {
