@@ -3,7 +3,7 @@ A Python script to control a Neopixel matrix with Home Assistant.
 
 ## License
 
-    Copyright (C) 2020 Peter Vashevko
+    Copyright (C) 2023 Leah Vashevko
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
